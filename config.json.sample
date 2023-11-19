@@ -1,0 +1,12 @@
+{
+    "api_key": "Your-API-Key-Here",
+    "tts_model": "tts-1",
+    "voice": "alloy",
+    "audio_format": "mp3",
+    "excluded_tags": ["pre", "header", "nav"],
+    "excluded_classes": [],
+    "excluded_ids": [],
+    "price_per_1k_chars": 0.015,
+    "max_character_limit": 4096,
+    "user_agent": ""
+}
