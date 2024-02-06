@@ -7,6 +7,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from pydub import AudioSegment
 from openai._client import OpenAI
+from epub_handler import list_html_files, extract_html_content
 
 
 def load_config(config_path):
@@ -35,6 +36,19 @@ def get_content(input_path, user_agent):
         response = requests.get(input_path, headers=headers)
         response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
         return response.text
+    elif input_path.endswith('.epub'):
+        html_files = list_html_files(input_path)
+        print("Available documents:")
+        for i, file_name in enumerate(html_files, start=1):
+            print(f"{i}: {Path(file_name).stem}")
+        while True:
+            doc_number = int(input("Enter the index number of the document to process: "))
+            if doc_number-1 not in range(len(html_files)):
+                print(f"The number must between 1 and {len(html_files)}.")
+                continue
+            break     
+        html_file = html_files[doc_number-1]
+        return extract_html_content(input_path, html_file)               
     else:
         return Path(input_path).read_text()
 
@@ -86,8 +100,8 @@ def process_text_to_speech(client, text, tts_model, voice, chunk_size, output_di
     return combined_audio
 
 def main():
-    parser = argparse.ArgumentParser(description='Process HTML file to speech.')
-    parser.add_argument('input', help='Path to the input file (HTML or text)')
+    parser = argparse.ArgumentParser(description='Process HTML content to speech.')
+    parser.add_argument('input', help='Path to the input file (HTML (possibly a URL), EPUB, or text)')
     parser.add_argument('-o', '--output-dir', default=Path(__file__).parent / 'output', help='Path to the output directory')
     parser.add_argument('--clean-html', type=bool, default=True, help='Whether to clean HTML content and remove extra whitespace (default: True)')
     parser.add_argument('--config', default='config.json', help='Path to the configuration file')
@@ -100,7 +114,7 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Fetch content from URL or local file
+    # Fetch content from URL, Epub file, or local text file
     input_content = get_content(args.input, config.get('user_agent', ''))
 
     if args.clean_html:
