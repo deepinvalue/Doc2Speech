@@ -3,3 +3,4 @@ openai
 pydub
 tqdm
 requests
+ebooklib

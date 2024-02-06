@@ -7,6 +7,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from pydub import AudioSegment
 from openai._client import OpenAI
+from epub_handler import read_epub, list_chapters, extract_chapter_content
 
 
 def load_config(config_path):
@@ -35,6 +36,21 @@ def get_content(input_path, user_agent):
         response = requests.get(input_path, headers=headers)
         response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
         return response.text
+    elif input_path.endswith('.epub'):
+        book = read_epub(input_path)
+        if book is not None:
+            chapters = list_chapters(book)
+            print("Available documents:")
+            for i, (title, _) in enumerate(chapters, start=1):
+                print(f"{i}: {title}")
+            while True:
+                doc_number = int(input("Enter the number of the document to process: "))
+                if doc_number-1 not in range(len(chapters)):
+                    print(f"Document number must between 1 and {len(chapters)}.")
+                    continue
+                break
+            chapter_id = chapters[doc_number-1][1]
+            return extract_chapter_content(book, chapter_id)
     else:
         return Path(input_path).read_text()
 
@@ -100,7 +116,7 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Fetch content from URL or local file
+    # Fetch content from URL, Epub file, or local text file
     input_content = get_content(args.input, config.get('user_agent', ''))
 
     if args.clean_html:
