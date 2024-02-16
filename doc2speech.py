@@ -52,8 +52,17 @@ def get_content(input_path, user_agent):
     else:
         return Path(input_path).read_text()
 
-def clean_html_text(html_content, excluded_tags, excluded_classes, excluded_ids):
+def clean_html_text(html_content, root_node_selector, excluded_tags, excluded_classes, excluded_ids):
     soup = BeautifulSoup(html_content, 'html.parser')
+
+    if root_node_selector!='':
+        # Find the root node to start from
+        root_node = soup.select_one(root_node_selector)
+        if root_node:
+            soup = root_node
+        else:
+            print(f"No element found for the root node selector '{root_node_selector}'. Processing the entire document.")
+
     # Remove specified tags
     for tag in excluded_tags:
         for element in soup.find_all(tag):
@@ -100,11 +109,15 @@ def process_text_to_speech(client, text, tts_model, voice, chunk_size, output_di
     return combined_audio
 
 def main():
-    parser = argparse.ArgumentParser(description='Process HTML content to speech.')
-    parser.add_argument('input', help='Path to the input file (HTML (possibly a URL), EPUB, or text)')
-    parser.add_argument('-o', '--output-dir', default=Path(__file__).parent / 'output', help='Path to the output directory')
-    parser.add_argument('--clean-html', type=bool, default=True, help='Whether to clean HTML content and remove extra whitespace (default: True)')
+    parser = argparse.ArgumentParser(
+        description='Process HTML content to speech.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument('input', help='Path to the input file. Supported formats: HTML, EPUB, text, or a URL.')
     parser.add_argument('--config', default='config.json', help='Path to the configuration file')
+    parser.add_argument('--output-dir', '-o', default=Path(__file__).parent / 'output', help='Path to the output directory')
+    parser.add_argument('--clean-html', type=bool, default=True, help='Whether to clean HTML content and remove extra whitespace')
+    parser.add_argument('--root-node-selector', '-s', default='', help='CSS selector for the root node to start processing from')
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -118,7 +131,13 @@ def main():
     input_content = get_content(args.input, config.get('user_agent', ''))
 
     if args.clean_html:
-        clean_text = clean_html_text(input_content, config['excluded_tags'], config['excluded_classes'], config['excluded_ids']).strip()
+        clean_text = clean_html_text(
+            input_content,
+            args.root_node_selector or config.get('root_node_selector', ''), 
+            config['excluded_tags'], 
+            config['excluded_classes'], 
+            config['excluded_ids']
+        ).strip()
         clean_text = re.sub(r'\n\s*\n', '\n', clean_text)
         clean_text = re.sub(r'\s\s+', ' ', clean_text)
     else:

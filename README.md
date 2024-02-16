@@ -7,6 +7,7 @@ Doc2Speech is a Python-based tool that converts HTML contents (possibly from a U
 - **Convert HTML to Speech**: Turns any HTML content into natural-sounding audio.
 - **Direct URL Processing**: Capable of directly fetching and converting HTML content from URLs.
 - **EPUB Support**: Directly converts chapters from EPUB documents.
+- **Focused Conversion**: Allows selecting specific content with a CSS selector for conversion.
 - **Customizable Content Processing**: Ability to exclude specific HTML tags, classes, or IDs.
 - **OpenAI's TTS Model**: Utilizes the latest in TTS technology for high-quality speech synthesis.
 - **Character Limit Management**: Smartly segments texts at sentence boundaries to respect OpenAI's character limits without disrupting the narrative flow.
@@ -42,6 +43,7 @@ Rename `config.json.sample` to `config.json` and update it as follows:
 - `tts_model`: The TTS model to use ("tts-1", "tts-1-hd").
 - `voice`: The voice model for TTS ("alloy", "echo", "fable", "onyx", "nova", "shimmer").
 - `audio_format`: Desired audio format for the output ("mp3", "opus", "aac", "flac").
+- `root_node_selector`: CSS selector to specify the starting root node for content processing.
 - `excluded_tags`: List of HTML tags to exclude from text conversion (e.g., ["pre", "header", "nav"]).
 - `excluded_classes`: List of HTML classes to exclude (e.g., ["class1", "class2"]).
 - `excluded_ids`: List of HTML element IDs to exclude (e.g., ["id1", "id2"]).
@@ -52,12 +54,15 @@ Rename `config.json.sample` to `config.json` and update it as follows:
 ## Usage
 
    ```bash
-   python doc2speech.py <input-file-or-url> -o <output-directory>
+   python doc2speech.py <input> [--config <config-file>] [--output-dir <output-dir> | -o <output-dir>] [--clean-html <bool>] [--root-node-selector <selector> | -s <selector>]
    ```
    Options:
 
-   - `<input-file-or-url>`: Path to the HTML file or URL.
-   - `<output-directory>`: Directory where the output audio file will be saved.
+   - `<input>`: Path to the file, URL, or EPUB document to convert.
+   - `--config <config-file>`: Optional, path to the configuration JSON file.
+   - `--output-dir <output-dir>`, `-o <output-dir>`: Optional, directory where the output audio file will be saved.
+   - `--clean-html <bool>`: Optional, boolean indicating whether to clean HTML content of unwanted elements.
+   - `--root-node-selector <selector>`, `-s <selector>`: Optional, CSS selector for specifying the root node from which to start processing. This will override the corresponding setting in the configuration file.
 
 ## Future Enhancements
 
