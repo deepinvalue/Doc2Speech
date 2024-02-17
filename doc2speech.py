@@ -10,10 +10,6 @@ from openai._client import OpenAI
 from epub_handler import list_html_files, extract_html_content
 
 
-def load_config(config_path):
-    with open(config_path, 'r') as file:
-        return json.load(file)
-
 def user_confirmation():
     while True:
         user_input = input("Do you want to continue with the TTS conversion? [Y/n]: ").lower().strip()
@@ -78,30 +74,59 @@ def clean_html_text(html_content, root_node_selector, excluded_tags, excluded_cl
             element.decompose()            
     return soup.get_text()
 
-def calculate_cost(text_length, price_per_1k_chars):
-    return price_per_1k_chars * text_length / 1000
+def calculate_cost(text_chunks, price_per_1k_chars):
+    return sum(len(chunk) for chunk in text_chunks) * price_per_1k_chars / 1000
 
-def process_text_to_speech(client, text, tts_model, voice, chunk_size, output_dir):
-    def split_text(text):
-        chunks = []
-        while text:
-            if len(text) <= chunk_size:
-                chunks.append(text)
-                break
-            split_index = max(text.rfind('.', 0, chunk_size) + 1, text.rfind(' ', 0, chunk_size))
-            chunk, text = text[:split_index], text[split_index:]
-            chunks.append(chunk)
-        return chunks
+def split_text(text, chunk_size):
+    """
+    Splits the text into chunks that are at most `chunk_size` characters long,
+    ideally ending with a complete sentence by looking for punctuation followed by any whitespace.
+    """
+    chunks = []
+    pattern = re.compile(r'(?<=[.!?])\s+')
+    start = 0
 
+    while start < len(text):
+        if len(text) - start <= chunk_size:
+            chunks.append(text[start:])
+            break
+        # Find the nearest sentence end within chunk_size
+        match = pattern.finditer(text[start:start+chunk_size])
+        split_index = None
+        for m in match:
+            split_index = m.start(0)
+        if split_index is not None:
+            # Adjust split_index relative to the entire text
+            split_index += start
+            chunks.append(text[start:split_index].strip())
+            start = split_index + 1
+        else:
+            # Fallback: split at chunk_size, trying not to break words
+            split_at_space = text.rfind(' ', start, start + chunk_size)
+            if split_at_space != -1:
+                chunks.append(text[start:split_at_space].strip())
+                start = split_at_space + 1
+            else:
+                # If no spaces, force split at chunk_size
+                chunks.append(text[start:start+chunk_size].strip())
+                start += chunk_size
+
+    return [chunk for chunk in chunks if chunk]  # Remove empty strings, if any
+
+
+def process_text_to_speech(client, text_chunks, audio_file_name, tts_model, voice, chunk_size, output_dir):
     def process_chunk(chunk, index):
-        speech_file_path = output_dir / f'speech_chunk_{index}.mp3'
+        speech_file_path = output_dir / f'{audio_file_name}_part_{index}.mp3'
         response = client.audio.speech.create(model=tts_model, voice=voice, input=chunk)
         response.stream_to_file(speech_file_path)
         return speech_file_path
 
     audio_chunks = []
-    for index, chunk in enumerate(tqdm(split_text(text), desc="Processing Text Chunks", unit="chunk")):
-        audio_chunks.append(process_chunk(chunk, index)) 
+    total_characters = sum(len(chunk) for chunk in text_chunks)
+    with tqdm(total=total_characters, desc="Text Conversion Progress", unit="char", unit_scale=True) as pbar:
+        for index, chunk in enumerate(text_chunks):
+            audio_chunks.append(process_chunk(chunk, index)) 
+            pbar.update(len(chunk))
     combined_audio = AudioSegment.empty()
     for file_path in audio_chunks:
         combined_audio += AudioSegment.from_mp3(file_path)
@@ -120,8 +145,8 @@ def main():
     parser.add_argument('--root-node-selector', '-s', default='', help='CSS selector for the root node to start processing from')
     args = parser.parse_args()
 
-    config = load_config(args.config)
-    client = OpenAI(api_key=config['api_key'])
+    with open(args.config, 'r') as config_file:
+        config = json.load(config_file)
 
     # Ensure output directory exists
     output_dir = Path(args.output_dir)
@@ -143,12 +168,25 @@ def main():
     else:
         clean_text = input_content.strip()        
 
-    total_cost = calculate_cost(len(clean_text), config['price_per_1k_chars'])
+    text_chunks = split_text(clean_text, config['max_character_limit'])
+
+    total_cost = calculate_cost(text_chunks, config['price_per_1k_chars'])
     print(f"Estimated Cost: {total_cost:.3f}$")
 
+    audio_file_name = Path(args.input).stem
+
     if user_confirmation():
-        audio = process_text_to_speech(client, clean_text, config['tts_model'], config['voice'], config['max_character_limit'], output_dir)
-        output_file = output_dir / f"{Path(args.input).stem}.{config['audio_format']}"
+        client = OpenAI(api_key=config['api_key'])
+        audio = process_text_to_speech(
+            client, 
+            text_chunks,
+            audio_file_name,
+            config['tts_model'], 
+            config['voice'], 
+            config['max_character_limit'], 
+            output_dir
+        )
+        output_file = output_dir / f"{audio_file_name}.{config['audio_format']}"
         audio.export(output_file, format=config['audio_format'])
         print(f"TTS conversion finished successfully. File saved to {output_file}")
     else:

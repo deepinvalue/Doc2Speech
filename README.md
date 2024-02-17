@@ -1,6 +1,6 @@
 # Doc2Speech
 
-Doc2Speech is a Python-based tool that converts HTML contents (possibly from a URL), EPUB documents, and text files into natural-sounding speech. It leverages OpenAI's advanced Text-to-Speech (TTS) model and is designed to handle the character limit constraints of the API, ensuring a seamless and natural flow of speech.
+Doc2Speech is a Python-based tool that converts HTML contents (possibly from a URL), EPUB documents, and text files into natural-sounding speech. It leverages OpenAI's advanced Text-to-Speech (TTS) model and is designed to handle the character limit constraints of the API, ensuring a seamless and natural flow of speech by intelligently segmenting text at sentence boundaries.
 
 ## Features
 
@@ -10,7 +10,7 @@ Doc2Speech is a Python-based tool that converts HTML contents (possibly from a U
 - **Focused Conversion**: Allows selecting specific content with a CSS selector for conversion.
 - **Customizable Content Processing**: Ability to exclude specific HTML tags, classes, or IDs.
 - **OpenAI's TTS Model**: Utilizes the latest in TTS technology for high-quality speech synthesis.
-- **Character Limit Management**: Smartly segments texts at sentence boundaries to respect OpenAI's character limits without disrupting the narrative flow.
+- **Character Limit Management**: Segments texts at sentence boundaries to respect OpenAI's character limits without disrupting the narrative flow.
 - **Estimated Cost Calculation**: Provides an estimated cost calculation for using OpenAI's TTS API.
 
 ## Getting Started
@@ -68,6 +68,7 @@ Rename `config.json.sample` to `config.json` and update it as follows:
 
 - [x] Addition of EPUB file support.
 - [ ] Expansion of audio format support beyond MP3.
+- [ ] Addition of M4B audiobook format with support for Table of Contents.
 
 ## Contributing
 
